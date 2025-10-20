@@ -1,167 +1,125 @@
 import unittest
 from unittest.mock import patch, Mock
-from order_model import OrderModel
+from models.order_model import OrderModel
+from models.item_model import ItemModel
 from order_service import OrderService
+from utils.order_values import calculate_average_order_value
 import main
+import requests
+
+class TestItemModel(unittest.TestCase):
+    """Tests for ItemModel"""
+    
+    def test_item_model_from_json(self):
+        """ItemModel creation from JSON data"""
+        data = {
+            "name": "Vanilla Cake", 
+            "price": "30.00", 
+            "sku": "VAN001",
+        }
+        item = ItemModel.from_json(data)
+        
+        self.assertEqual(item.name, "Vanilla Cake")
+        self.assertEqual(item.price, 30.00)
+        self.assertEqual(item.sku, "VAN001")
 
 class TestOrderModel(unittest.TestCase):
-    """Test cases for OrderModel class."""
+    """Tests for OrderModel"""
     
-    def test_order_model_initialization(self):
-        """Test OrderModel object creation."""
-
-        items = [{"name": "Cake", "price": "25.00"}]
-        order = OrderModel(
-            id="123",
-            created_at="2025-10-20T10:00:00Z",
-            items=items,
-            items_value=25.00
-        )
+    def test_order_model_from_json(self):
+        """OrderModel creation from JSON data"""
+        data = {
+            "id": "123",
+            "created_at": "2025-10-20T10:00:00Z",
+            "items": [
+                {"name": "Cake", "price": "25.00", "sku": "CAKE001"},
+                {"name": "Cookie", "price": "5.50", "sku": "COOK001"}
+            ],
+        }
+        order = OrderModel.from_json(data)
         
         self.assertEqual(order.id, "123")
-        self.assertEqual(order.created_at, "2025-10-20T10:00:00Z")
-        self.assertEqual(order.items, items)
-        self.assertEqual(order.items_value, 25.00)
-    
-    def test_order_model_repr(self):
-        """Test OrderModel string representation."""
-
-        items = [{"name": "Cake", "price": "25.00"}]
-        order = OrderModel(id="123", created_at="2025-10-20T10:00:00Z", items=items, items_value=25.00)
-        
-        expected = "OrderModel(id='123', items_value=25.0, items_count=1)"
-        self.assertEqual(repr(order), expected)
+        self.assertEqual(len(order.items), 2)
+        self.assertEqual(order.items[0].name, "Cake")
+        self.assertEqual(order.items[1].price, 5.50)
+        self.assertEqual(order.calculate_total_order_value(), 30.50)
 
 class TestOrderService(unittest.TestCase):
-    """Test cases for OrderService class."""
+    """Tests for OrderService"""
     
-    def setUp(self):
-        """Set up test data."""
-
-        self.valid_data = {
+    def test_get_orders_success(self):
+        """Order-fetching and model creation from API"""
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
             "orders": [
                 {
                     "id": "1",
                     "created_at": "2025-10-20T10:00:00Z",
-                    "items": [
-                        {"name": "Chocolate Cake", "price": "25.50"},
-                        {"name": "Vanilla Cake", "price": "22.00"}
-                    ]
+                    "items": [{"name": "Cake", "price": "25.00", "sku": "CAKE001"}]
                 },
                 {
-                    "id": "2",
+                    "id": "2", 
                     "created_at": "2025-10-20T11:00:00Z",
-                    "items": [
-                        {"name": "Red Velvet Cake", "price": "30.00"}
-                    ]
+                    "items": [{"name": "Cookie", "price": "5.50", "sku": "COOK001"}]
                 }
             ]
         }
-    
-    def test_parse_orders_valid_data(self):
-        """Test parsing valid order data."""
-
-        result = OrderService.parse_orders(self.valid_data)
-        # Average: (25.50 + 22.00 + 30.00) / 2 = 38.75
-        self.assertEqual(result, "38.75")
-    
-    def test_parse_orders_empty_orders(self):
-        """Test parsing data with no orders."""
-
-        data = {"orders": []}
-        result = OrderService.parse_orders(data)
-        self.assertEqual(result, "0.00")
-    
-    def test_parse_orders_invalid_data_format(self):
-        """Test parsing invalid data format."""
-
-        with self.assertRaises(ValueError):
-            OrderService.parse_orders("invalid")
         
-        with self.assertRaises(ValueError):
-            OrderService.parse_orders({"no_orders_key": []})
-    
-    def test_parse_orders_with_invalid_items(self):
-        """Test parsing orders with invalid item data."""
+        with patch('order_service.requests.get', return_value=mock_response):
+            orders = OrderService.get_orders()
+        
+        self.assertEqual(len(orders), 2)
+        self.assertEqual(orders[0].id, "1")
+        self.assertEqual(orders[1].id, "2")
+        self.assertEqual(len(orders[0].items), 1)
 
-        data = {
-            "orders": [
-                {
-                    "id": "1",
-                    "created_at": "2025-10-20T10:00:00Z",
-                    "items": [
-                        {"name": "Valid Cake", "price": "25.00"},
-                        {"name": "Invalid Cake", "price": "invalid_price"},
-                        "invalid_item"
-                    ]
-                }
-            ]
-        }
-        result = OrderService.parse_orders(data)
-        self.assertEqual(result, "25.00")  # Only the valid price (25.00) should be counted
+class TestOrderValues(unittest.TestCase):
+    """Tests for order values utility function"""
+    
+    def test_calculate_average_order_value(self):
+        """Calculating average order value with multiple orders"""
+        orders = [
+            OrderModel("1", "2025-10-20T10:00:00Z", [
+                ItemModel("Cake", 30.00, "CAKE001")
+            ]),
+            OrderModel("2", "2025-10-20T11:00:00Z", [
+                ItemModel("Cookie", 10.00, "COOK001")
+            ])
+        ]
+        
+        average = calculate_average_order_value(orders)
+        self.assertEqual(average, 20.00)
+    
+    def test_calculate_average_order_value_empty_list(self):
+        """Calculating average with an empty list of orders"""
+        average = calculate_average_order_value([])
+        self.assertEqual(average, 0.0)
 
 class TestMain(unittest.TestCase):
-    """Test cases for main module functions."""
-    
-    @patch('main.requests.get')
-    def test_call_api_success(self, mock_get):
-        """Test successful API call."""
+    """Tests for main function integration"""
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
+    @patch('main.OrderService.get_orders')
+    @patch('main.calculate_average_order_value')
+    def test_main_success(self, mock_calculate_average, mock_get_orders):
+        """Running main()"""
+        mock_get_orders.return_value = [Mock()]
+        mock_calculate_average.return_value = 25.50
         
-        result = main.call_api()
+        with patch('builtins.print') as mock_print:
+            main.main()
         
-        self.assertEqual(result, mock_response)
-        mock_get.assert_called_once_with("https://fauxdata.codelayer.io/api/orders")
+        mock_print.assert_called_once_with("The average value of the orders is: 25.50")
     
-    @patch('main.requests.get')
-    def test_call_api_failure(self, mock_get):
-        """Test API call failure."""
-
-        mock_response = Mock()
-        mock_response.raise_for_status.side_effect = Exception("API Error")
-        mock_get.return_value = mock_response
+    @patch('main.OrderService.get_orders')
+    def test_main_api_failure(self, mock_get_orders):
+        """Testing main() with API failure"""
+        mock_get_orders.side_effect = requests.RequestException("API Error")
         
-        with self.assertRaises(Exception):
-            main.call_api()
-    
-    @patch('main.OrderService.parse_orders')
-    def test_handle_response_success(self, mock_parse_orders):
-        """Test successful response handling."""
-
-        mock_parse_orders.return_value = "25.50"
+        with patch('builtins.print') as mock_print:
+            main.main()
         
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"orders": []}
-        
-        result = main.handle_response(mock_response)
-        
-        self.assertEqual(result, "25.50")
-        mock_parse_orders.assert_called_once()
-    
-    def test_handle_response_server_error(self):
-        """Test handling server error response."""
-
-        mock_response = Mock()
-        mock_response.status_code = 500
-        
-        result = main.handle_response(mock_response)
-        
-        self.assertIsNone(result)
-    
-    def test_handle_response_unhandled_status(self):
-        """Test handling unhandled status codes."""
-
-        mock_response = Mock()
-        mock_response.status_code = 404
-        
-        result = main.handle_response(mock_response)
-        
-        self.assertIsNone(result)
+        mock_print.assert_called_once_with("API request failed: API Error")
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
