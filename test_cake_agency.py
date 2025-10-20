@@ -97,7 +97,7 @@ class TestOrderValues(unittest.TestCase):
         self.assertEqual(average, 0.0)
 
 class TestMain(unittest.TestCase):
-    """Tests for main function integration"""
+    """Tests for main()"""
 
     @patch('main.OrderService.get_orders')
     @patch('main.calculate_average_order_value')

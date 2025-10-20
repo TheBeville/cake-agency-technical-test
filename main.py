@@ -4,7 +4,9 @@ from utils.order_values import calculate_average_order_value
 
 def main() -> None:
     try:
+        print("Fetching orders from API...")
         orders = OrderService.get_orders()
+        print(f"Fetched {len(orders)} orders")
         average_value = calculate_average_order_value(orders)
         print(f"The average value of the orders is: {average_value:,.2f}")
     except requests.RequestException as e:
