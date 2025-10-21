@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, Mock
 from models.order_model import OrderModel
 from models.item_model import ItemModel
-from order_service import OrderService
+from services.order_service import OrderService
 from utils.order_values import calculate_average_order_value
 import main
 import requests

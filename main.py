@@ -1,5 +1,5 @@
 import requests
-from order_service import OrderService
+from services.order_service import OrderService
 from utils.order_values import calculate_average_order_value
 
 def main() -> None:
