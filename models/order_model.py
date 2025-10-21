@@ -19,7 +19,6 @@ class OrderModel:
             id = data.get("id"),
             created_at = data.get("created_at"),
             items = [ItemModel.from_json(item) for item in data.get("items", [])],
-            items_value = data.get("items_value", 0),
         )
     
     def calculate_total_order_value(self) -> float:
