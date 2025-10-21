@@ -108,8 +108,14 @@ class TestMain(unittest.TestCase):
         
         with patch('builtins.print') as mock_print:
             main.main()
-        
-        mock_print.assert_called_once_with("The average value of the orders is: 25.50")
+
+        expected_calls = [
+            unittest.mock.call("Fetching orders from API..."),
+            unittest.mock.call(f"Fetched 1 orders"),
+            unittest.mock.call("The average value of the orders is: 25.50")
+        ]
+        mock_print.assert_has_calls(expected_calls)
+
     
     @patch('main.OrderService.get_orders')
     def test_main_api_failure(self, mock_get_orders):
@@ -119,7 +125,11 @@ class TestMain(unittest.TestCase):
         with patch('builtins.print') as mock_print:
             main.main()
         
-        mock_print.assert_called_once_with("API request failed: API Error")
+        expected_calls = [
+            unittest.mock.call("Fetching orders from API..."),
+            unittest.mock.call("API request failed: API Error")
+        ]
+        mock_print.assert_has_calls(expected_calls)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
