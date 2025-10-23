@@ -24,5 +24,5 @@ python main.py
 
 For unit tests, run the following command:
 ```bash
-python -m unittest test_cake_agency.py -v
+python -m unittest tests/test_cake_agency.py -v
 ```

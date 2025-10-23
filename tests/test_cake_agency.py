@@ -1,11 +1,17 @@
 import unittest
+import sys
+import os
 from unittest.mock import patch, Mock
+import requests
+
+# Fix for pathing since tests were moved to a dedicated folder
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from models.order_model import OrderModel
 from models.item_model import ItemModel
 from services.order_service import OrderService
 from utils.order_values import calculate_average_order_value
 import main
-import requests
 
 class TestItemModel(unittest.TestCase):
     """Tests for ItemModel"""
@@ -66,7 +72,7 @@ class TestOrderService(unittest.TestCase):
             ]
         }
         
-        with patch('order_service.requests.get', return_value=mock_response):
+        with patch('services.order_service.requests.get', return_value=mock_response):
             orders = OrderService.get_orders()
         
         self.assertEqual(len(orders), 2)
